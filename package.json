@@ -1,0 +1,11 @@
+{
+  "name": "stats-ingestion",
+  "version": "1.0.0",
+  "description": "Stats Ingestion Process",
+  "main": "index.js",
+  "scripts": {
+    "test": "index.js -p URL -j JOB-TYPE"
+  },
+  "author": "Ben Selland",
+  "license": "ISC"
+}
