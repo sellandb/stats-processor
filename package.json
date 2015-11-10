@@ -7,5 +7,11 @@
     "test": "index.js -p URL -j JOB-TYPE"
   },
   "author": "Ben Selland",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.2.15",
+    "chalk": "^1.1.1",
+    "jsdom": "^7.0.2",
+    "q": "^1.4.1"
+  }
 }
