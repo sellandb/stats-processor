@@ -2,7 +2,6 @@ var aws = require( "aws-sdk" );
 var chalk = require( "chalk" );
 var Q = require( "q" );
 
-aws.config.update({accessKeyId: 'AKIAIGVL5EBRN3EAALGA', secretAccessKey: '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'});
 aws.config.update({region: 'us-east-1'});
 
 var sqs = new aws.SQS();
@@ -28,7 +27,8 @@ function processMessages(){
       var handle = message.ReceiptHandle;
       var body = JSON.parse(message.Body);
       console.log(chalk.green("Received ", message.MessageId));
-      console.log(chalk.green("Body ", body.date));
+      console.log(chalk.green("Type ", body.type));
+      console.log(chalk.green("Subtype ", body.subtype));
 
       deleteMessage({
         QueueUrl: queueUrl,
