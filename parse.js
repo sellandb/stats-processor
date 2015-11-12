@@ -13,7 +13,6 @@ var sendMessage = Q.nbind( sqs.sendMessage, sqs );
 var gameSheets = {};        //store URLs for the Gamesheets that are being parsed
 var messageHeader = {};     //store the message header information between requests
 var queueUrl = "";          //The URL for the queue
-var debugSend = false;       //Turn on (set to true) to disable sending to the queue
 
 
 new function(boxScoreUrl) {
@@ -91,49 +90,47 @@ new function(boxScoreUrl) {
       messageHeader["year"] = year;
       messageHeader["game"] = gameID;
 
-      //check if we are in debug
-      if(!debugSend){
 
-        //Send the Game Header datagram
-        sendMessage({
-          MessageBody: JSON.stringify({
-            "year": messageHeader["year"],
-            "game": messageHeader["game"],
-            type: "GS",
-            subtype: "header",
-            data: window.$("#StdHeader").html()
-          }),
-          QueueUrl: queueUrl
-        })
-        .then(function(data){
-          //Datagram Sent
-          console.log(chalk.green("Sent ", data.MessageId));
-        })
-        .catch( function(error){
-          //Datagram Error
-          console.log( chalk.red(err, err.stack) );// an error occurred
-        });
+      //Send the Game Header datagram
+      sendMessage({
+        MessageBody: JSON.stringify({
+          "year": messageHeader["year"],
+          "game": messageHeader["game"],
+          type: "GS",
+          subtype: "header",
+          data: window.$("#StdHeader").html()
+        }),
+        QueueUrl: queueUrl
+      })
+      .then(function(data){
+        //Datagram Sent
+        console.log(chalk.green("Sent ", data.MessageId));
+      })
+      .catch( function(error){
+        //Datagram Error
+        console.log( chalk.red(err, err.stack) );// an error occurred
+      });
 
-        //Send the Goalie Report Datagram
-        sendMessage({
-          MessageBody: JSON.stringify({
-            "year": messageHeader["year"],
-            "game": messageHeader["game"],
-            type: "GS",
-            subtype: "goalie",
-            data: window.$("#MainTable tr:nth-child(15) table tr.oddColor, #MainTable tr:nth-child(15) table tr.evenColor").html()
-          }),
-          QueueUrl: queueUrl
-        })
-        .then(function(data){
-          //Datagram Sent
-          console.log(chalk.green("Sent ", data.MessageId));
-        })
-        .catch( function(error){
-          //Datagram Error
-          console.log( chalk.red(err, err.stack) );// an error occurred
-        });
-      }
+      //Send the Goalie Report Datagram
+      sendMessage({
+        MessageBody: JSON.stringify({
+          "year": messageHeader["year"],
+          "game": messageHeader["game"],
+          type: "GS",
+          subtype: "goalie",
+          data: window.$("#MainTable tr:nth-child(15) table tr.oddColor, #MainTable tr:nth-child(15) table tr.evenColor").html()
+        }),
+        QueueUrl: queueUrl
+      })
+      .then(function(data){
+        //Datagram Sent
+        console.log(chalk.green("Sent ", data.MessageId));
+      })
+      .catch( function(error){
+        //Datagram Error
+        console.log( chalk.red(err, err.stack) );// an error occurred
+      });
+
 
 
       def.resolve();
@@ -157,30 +154,27 @@ new function(boxScoreUrl) {
       //Grab each of the game events
       window.$("table tr.evenColor").each(function(i, el){
 
-        //check if we are in debug
-        if(!debugSend){
+        //Send the event datagram
+        sendMessage({
+          MessageBody: JSON.stringify({
+            "year": messageHeader["year"],
+            "game": messageHeader["game"],
+            type: "PL",
+            subtype: "event",
+            data: el.innerHTML
+          }),
+          QueueUrl: queueUrl
+        })
+        .then(function(data){
+          //Datagram Sent
+          console.log( chalk.green("Sent ", data.MessageId));
+        })
+        .catch( function(error){
+          //Datagram Error
+          console.log( chalk.red(err, err.stack) );// an error occurred
+        });
 
-          //Send the event datagram
-          sendMessage({
-            MessageBody: JSON.stringify({
-              "year": messageHeader["year"],
-              "game": messageHeader["game"],
-              type: "PL",
-              subtype: "event",
-              data: el.innerHTML
-            }),
-            QueueUrl: queueUrl
-          })
-          .then(function(data){
-            //Datagram Sent
-            console.log( chalk.green("Sent ", data.MessageId));
-          })
-          .catch( function(error){
-            //Datagram Error
-            console.log( chalk.red(err, err.stack) );// an error occurred
-          });
 
-        }
 
       });
       def.resolve();
@@ -210,29 +204,80 @@ new function(boxScoreUrl) {
 
         while(startPoint.hasClass("oddColor") || startPoint.hasClass("evenColor")){
 
-          if(!debugSend){
+          sendMessage({
+            MessageBody: JSON.stringify({
+              "year": messageHeader["year"],
+              "game": messageHeader["game"],
+              "team": team,
+              "player": player,
+              type: "TOI",
+              subtype: "player",
+              data: startPoint.html()
+            }),
+            QueueUrl: queueUrl
+          })
+          .then(function(data){
+            //Datagram Sent
+            console.log( chalk.green("Sent ", data.MessageId));
+          })
+          .catch( function(error){
+            //Datagram Error
+            console.log( chalk.red(err, err.stack) );// an error occurred
+          });
 
-            sendMessage({
-              MessageBody: JSON.stringify({
-                "year": messageHeader["year"],
-                "game": messageHeader["game"],
-                "team": team,
-                "player": player,
-                type: "TOI",
-                subtype: "player",
-                data: startPoint.html()
-              }),
-              QueueUrl: queueUrl
-            })
-            .then(function(data){
-              //Datagram Sent
-              console.log( chalk.green("Sent ", data.MessageId));
-            })
-            .catch( function(error){
-              //Datagram Error
-              console.log( chalk.red(err, err.stack) );// an error occurred
-            });
-          }
+
+          startPoint = startPoint.next();
+        }
+
+      });
+
+      def.resolve();
+    }
+  );
+  return def.promise;
+
+})
+.then(function(){
+
+  //Process the Play by Play and store header data
+  var def = Q.defer();
+  var url = gameSheets["TH"];
+  console.log(chalk.green("Parsing: ", url));
+
+  jsdom.env(
+    url,
+    ["http://code.jquery.com/jquery.js"],
+    function (err, window) {
+
+      var team = window.$("table tr:nth-child(3) table tr td").html();
+
+      //Grab each of the player datagrams
+      window.$("table tr:nth-child(4) td table tr td.playerHeading").each(function(i, el){
+        var player = el.textContent;
+        var startPoint = window.$(el).parent().next().next();
+
+        while(startPoint.hasClass("oddColor") || startPoint.hasClass("evenColor")){
+
+          sendMessage({
+            MessageBody: JSON.stringify({
+              "year": messageHeader["year"],
+              "game": messageHeader["game"],
+              "team": team,
+              "player": player,
+              type: "TOI",
+              subtype: "player",
+              data: startPoint.html()
+            }),
+            QueueUrl: queueUrl
+          })
+          .then(function(data){
+            //Datagram Sent
+            console.log( chalk.green("Sent ", data.MessageId));
+          })
+          .catch( function(error){
+            //Datagram Error
+            console.log( chalk.red(err, err.stack) );// an error occurred
+          });
 
           startPoint = startPoint.next();
         }
